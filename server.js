@@ -56,6 +56,13 @@ app.use('/api/oauth',         require('./routes/oauth'));
 app.use('/api/generate',      require('./routes/generate'));
 app.use('/api/gallery',       require('./routes/gallery'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
+app.use('/api/posts',         require('./routes/posts'));
+app.use('/api/news',          require('./routes/news'));
+app.use('/api/videos',        require('./routes/videos'));
+app.use('/api/podcasts',      require('./routes/podcasts'));
+app.use('/api/users',         require('./routes/users'));
+app.use('/api/admin',         require('./routes/admin-users'));
+app.use('/api/careers',       require('./routes/careers'));
 
 // ── HEALTH ────────────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));

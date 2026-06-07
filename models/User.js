@@ -22,9 +22,35 @@ const userSchema = new mongoose.Schema({
   avatar:    { type: String, default: '' },
   bio:       { type: String, default: '', maxlength: 300 },
 
+  // Social links
+  instagram: { type: String, default: '' },
+  tiktok:    { type: String, default: '' },
+  youtube:   { type: String, default: '' },
+
   // Stats
   totalGenerations: { type: Number, default: 0 },
   totalUploads:     { type: Number, default: 0 },
+
+  // Admin
+  isAdmin: { type: Boolean, default: false },
+
+  // Role system
+  role: {
+    type:    String,
+    enum:    ['user', 'content_creator', 'journalist', 'admin'],
+    default: 'user',
+  },
+
+  // Account monitoring
+  lastLogin:       { type: Date },
+  lastLoginIp:     { type: String, default: '' },
+  registrationIp:  { type: String, default: '' },
+  imagesGenerated: { type: Number, default: 0 },
+  suspended:       { type: Boolean, default: false },
+
+  // Billing (used by payment routes)
+  billing:    { type: String, enum: ['monthly', 'annual'], default: 'monthly' },
+  planExpires:{ type: Date },
 
   createdAt: { type: Date, default: Date.now },
 });
@@ -48,10 +74,20 @@ userSchema.methods.toPublic = function() {
     email:            this.email,
     credits:          this.credits,
     plan:             this.plan,
+    billing:          this.billing,
+    planExpires:      this.planExpires,
     avatar:           this.avatar,
     bio:              this.bio,
+    instagram:        this.instagram,
+    tiktok:           this.tiktok,
+    youtube:          this.youtube,
     authProvider:     this.authProvider,
     totalGenerations: this.totalGenerations,
+    imagesGenerated:  this.imagesGenerated,
+    isAdmin:          this.isAdmin,
+    role:             this.role,
+    suspended:        this.suspended,
+    lastLogin:        this.lastLogin,
     createdAt:        this.createdAt,
   };
 };

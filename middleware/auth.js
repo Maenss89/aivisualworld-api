@@ -10,6 +10,7 @@ module.exports = async function requireAuth(req, res, next) {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const user    = await User.findById(payload.id);
     if (!user) return res.status(401).json({ error: 'User not found' });
+    if (user.suspended) return res.status(403).json({ error: 'Account suspended. Contact support@aivisualworld.com' });
     req.user = user;
     next();
   } catch (err) {
