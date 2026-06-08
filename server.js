@@ -63,6 +63,7 @@ app.use('/api/podcasts',      require('./routes/podcasts'));
 app.use('/api/users',         require('./routes/users'));
 app.use('/api/admin',         require('./routes/admin-users'));
 app.use('/api/careers',       require('./routes/careers'));
+app.use('/api/chat',          require('./routes/chat'));
 
 // ── HEALTH ────────────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
@@ -76,6 +77,4 @@ async function start() {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ MongoDB connected');
     app.listen(PORT, () => console.log(`🚀 AIVisualWorld API on port ${PORT}`));
-  } catch (err) { console.error('MongoDB failed:', err.message); process.exit(1); }
-}
-start();
+  } catch (err) {
