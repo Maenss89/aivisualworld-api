@@ -3,6 +3,31 @@ const fetch   = require('node-fetch');
 const auth    = require('../middleware/auth');
 const router  = express.Router();
 
+// ── DAILY FREE LIMIT ──────────────────────────────────────────────────────────
+const FREE_DAILY_LIMIT = 5; // credits per day for free users
+
+async function checkAndUpdateDailyLimit(user, cost) {
+  if (user.plan !== 'free') return; // paid users: no daily cap
+
+  const now       = new Date();
+  const resetDate = user.dailyCreditsReset ? new Date(user.dailyCreditsReset) : new Date(0);
+
+  // Reset counter if it's a new UTC day
+  if (now.toUTCString().slice(0, 16) !== resetDate.toUTCString().slice(0, 16)) {
+    user.dailyCreditsUsed  = 0;
+    user.dailyCreditsReset = now;
+  }
+
+  if ((user.dailyCreditsUsed || 0) + cost > FREE_DAILY_LIMIT) {
+    throw Object.assign(new Error(
+      `Daily limit reached. Free users can use ${FREE_DAILY_LIMIT} credits per day. ` +
+      `Upgrade to Starter ($14/mo) for 100 credits/month with no daily limits.`
+    ), { statusCode: 429 });
+  }
+
+  user.dailyCreditsUsed = (user.dailyCreditsUsed || 0) + cost;
+}
+
 // ── MODEL DEFINITIONS ─────────────────────────────────────────────────────────
 // tier:    basic (1cr) | standard (2cr) | premium (3-4cr) | ultra (5cr)
 // minPlan: free | starter | pro
@@ -12,7 +37,7 @@ const MODELS = {
     provider:    'openai',
     creditCost:  1,
     tier:        'basic',
-    minPlan:     'free',
+    minPlan:     'starter',              // FIX: locked to starter+ (costs OpenAI $)
     description: 'Fast & affordable — great for everyday questions',
     badge:       '⚡ Basic',
   },
@@ -21,9 +46,9 @@ const MODELS = {
     provider:    'deepseek',
     creditCost:  1,
     tier:        'basic',
-    minPlan:     'free',
-    description: 'Smart open-source model — fast and capable',
-    badge:       '⚡ Basic',
+    minPlan:     'free',                 // Only free model — cheapest API
+    description: 'Smart AI model — fast, capable, and free to try',
+    badge:       '⚡ Free',
   },
   'gpt-4o': {
     name:        'GPT-4o',
@@ -61,13 +86,31 @@ const MODELS = {
     description: "Anthropic's most powerful — best for complex deep thinking",
     badge:       '💎 Premium',
   },
+  'gpt-4.1': {
+    name:        'GPT-4.1',
+    provider:    'openai',
+    creditCost:  2,
+    tier:        'standard',
+    minPlan:     'starter',
+    description: "OpenAI's newest model — faster and smarter than GPT-4o",
+    badge:       '⭐ Standard',
+  },
+  'gpt-4.1-mini': {
+    name:        'GPT-4.1 Mini',
+    provider:    'openai',
+    creditCost:  1,
+    tier:        'basic',
+    minPlan:     'starter',
+    description: "Lean and fast — GPT-4.1 at half the cost",
+    badge:       '⚡ Basic',
+  },
   'gpt-4-5-preview': {
     name:        'GPT-4.5',
     provider:    'openai',
     creditCost:  3,
     tier:        'premium',
     minPlan:     'pro',
-    description: "OpenAI's latest advanced model — cutting-edge capabilities",
+    description: "OpenAI's cutting-edge preview model",
     badge:       '💎 Premium',
   },
 };
@@ -171,6 +214,9 @@ router.post('/', auth, async (req, res) => {
     if (user.credits < model.creditCost)
       return res.status(402).json({ error: `Not enough credits. ${model.name} costs ${model.creditCost} credits per message. You have ${user.credits}.` });
 
+    // Fix 3: daily cap for free users
+    await checkAndUpdateDailyLimit(user, model.creditCost);
+
     let reply;
     switch (model.provider) {
       case 'openai':
@@ -193,7 +239,7 @@ router.post('/', auth, async (req, res) => {
         throw new Error('Unknown provider');
     }
 
-    // Deduct credits
+    // Deduct credits (dailyCreditsUsed already updated in checkAndUpdateDailyLimit)
     user.credits -= model.creditCost;
     await user.save();
 
@@ -205,7 +251,8 @@ router.post('/', auth, async (req, res) => {
     });
   } catch (err) {
     console.error('Chat error:', err.message);
-    res.status(500).json({ error: err.message || 'Chat failed. Please try again.' });
+    const status = err.statusCode || 500;
+    res.status(status).json({ error: err.message || 'Chat failed. Please try again.' });
   }
 });
 
