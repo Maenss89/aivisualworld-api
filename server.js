@@ -78,3 +78,9 @@ async function start() {
     console.log('✅ MongoDB connected');
     app.listen(PORT, () => console.log(`🚀 AIVisualWorld API on port ${PORT}`));
   } catch (err) {
+    console.error('❌ MongoDB connection failed:', err.message);
+    process.exit(1);
+  }
+}
+
+start();
