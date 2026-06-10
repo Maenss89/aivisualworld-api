@@ -13,14 +13,14 @@ const PLANS = {
   starter: {
     name:          'Starter',
     price:         14,
-    credits:       150,
+    credits:       100,
     stripePriceId: process.env.STRIPE_PRICE_STARTER,
     paypalAmount:  '14.00',
   },
   pro: {
     name:          'Pro',
     price:         25,
-    credits:       350,
+    credits:       200,
     stripePriceId: process.env.STRIPE_PRICE_PRO,
     paypalAmount:  '25.00',
   },
@@ -50,8 +50,8 @@ router.post('/checkout', auth, async (req, res) => {
       customer:   customerId,
       mode:       'subscription',
       line_items: [{ price: plan.stripePriceId, quantity: 1 }],
-      success_url: `${process.env.FRONTEND_URL}/dashboard.html?subscription=success`,
-      cancel_url:  `${process.env.FRONTEND_URL}/upgrade.html?subscription=cancelled`,
+      success_url: `${process.env.FRONTEND_URL}/payment-checkout.html?subscription=success&plan=${planId}`,
+      cancel_url:  `${process.env.FRONTEND_URL}/payment-checkout.html?plan=${planId}&cancelled=1`,
       metadata:    { userId: user._id.toString(), planId },
     });
 
@@ -182,15 +182,16 @@ router.post('/paypal/create-order', auth, async (req, res) => {
         application_context: {
           brand_name:  'AIVisualWorld',
           user_action: 'PAY_NOW',
-          return_url:  `${process.env.FRONTEND_URL}/dashboard.html?subscription=success`,
-          cancel_url:  `${process.env.FRONTEND_URL}/upgrade.html?subscription=cancelled`,
+          return_url:  `${process.env.FRONTEND_URL}/payment-checkout.html?paypal=capture&planId=${planId}`,
+          cancel_url:  `${process.env.FRONTEND_URL}/payment-checkout.html?plan=${planId}&paypal=cancelled`,
         },
       }),
     });
 
     const orderData = await response.json();
     if (!orderData.id) throw new Error(orderData.message || 'Failed to create PayPal order');
-    res.json({ id: orderData.id });
+    const approvalLink = orderData.links?.find(l => l.rel === 'approve');
+    res.json({ id: orderData.id, approvalUrl: approvalLink?.href });
   } catch (err) {
     console.error('PayPal create order error:', err.message);
     res.status(500).json({ error: err.message });
